@@ -1,0 +1,55 @@
+
+
+MainWidget:
+
+<MainWidget>:
+    canvas.before:
+        Rectangle:
+            size: self.size
+            source: 'images/bg-1.jpg'
+    menu_widget: menu_widget
+    MenuWidget:
+        id: menu_widget
+
+
+<MenuWidget>:
+    canvas.before:
+        Rectangle:
+            size: self.size
+            source: 'images/bg-1.jpg'
+    Label:
+        font_size: dp(60)
+        font_name: 'fonts/Eurostile.ttf'
+        text: root.parent.menu_title
+        pos_hint: { "center_x": 0.5, "center_y": 0.8}
+        size_hint: .35, .23
+
+    Button:
+        font_size: dp(40)
+        font_name: 'fonts/Eurostile.ttf'
+        text: root.parent.menu_start_button
+        pos_hint: { "center_x": 0.5, "center_y": 0.6}
+        size_hint: .35, .1
+        on_press: root.parent.on_start_button_press()
+        background_normal: ''
+        background_color: .1, .8, .7, .85
+
+    Button:
+        font_size: dp(40)
+        font_name: 'fonts/Eurostile.ttf'
+        text: root.parent.menu_settings_button
+        pos_hint: { "center_x": 0.5, "center_y": 0.45}
+        size_hint: .35, .1
+        on_press: root.parent.on_settings_button_press()
+        background_normal: ''
+        background_color: .1, .8, .7, .85
+
+    Button:
+        font_size: dp(40)
+        font_name: 'fonts/Eurostile.ttf'
+        text: root.parent.menu_quit_button
+        pos_hint: { "center_x": 0.5, "center_y": 0.3}
+        size_hint: .35, .1
+        on_press: app.stop()
+        background_normal: ''
+        background_color: .1, .8, .7, .85
