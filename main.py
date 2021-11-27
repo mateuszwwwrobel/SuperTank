@@ -1,13 +1,15 @@
 from kivy.config import Config
 
-Config.set('graphics', 'width', '1500')
-Config.set('graphics', 'height', '900')
+Config.set('graphics', 'width', '1300')
+Config.set('graphics', 'height', '1300')
 
 from kivy.app import App
 from kivy.graphics import Color, Rectangle, Point, Quad, Line
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.properties import ObjectProperty, Clock
 from kivy.core.window import Window
+
+from levels import level_1
 
 
 class MainWidget(RelativeLayout):
@@ -25,6 +27,7 @@ class MainWidget(RelativeLayout):
     last_move = 'up'
     map_borders = [(0, 0), (0, 0)]  # [(left, right), (bottom, top)]
     wall_collision = None
+    map_initialized = False
 
     BULLETS_SPEED = 10
     bullets_list = []
@@ -38,10 +41,12 @@ class MainWidget(RelativeLayout):
 
     start_game_state = False
 
+    walls = []
+
     def __init__(self, **kwargs):
         super(MainWidget, self).__init__(**kwargs)
         self.init_tank()
-        self.init_game_map()
+        self.init_game_field()
 
         self._keyboard = Window.request_keyboard(self.keyboard_closed, self)
         self._keyboard.bind(on_key_down=self.on_keyboard_down)
@@ -49,12 +54,12 @@ class MainWidget(RelativeLayout):
 
         Clock.schedule_interval(self.update, 1 / 60)
 
-    def init_game_map(self):
+    def init_game_field(self):
         with self.canvas:
             Color(1, 1, 1)
             self.map = Rectangle()
 
-    def update_game_map(self):
+    def update_game_field(self):
         x_coord_1 = int(.05 * self.width)
         y_coord_1 = int(.05 * self.height)
         x_coord_2 = int(.9 * self.width)
@@ -62,6 +67,36 @@ class MainWidget(RelativeLayout):
         if self.start_game_state:
             self.map.size = [x_coord_2, y_coord_2]
             self.map.pos = [x_coord_1, y_coord_1]
+
+    def init_map(self):
+        level_schema = level_1
+        start_point_x = int(self.width * .05)
+        start_point_y = int(self.height * .85)
+        row_counter = 0
+        x_interval = (self.map_borders[0][1] - self.map_borders[0][0]) / 40
+        y_interval = int((self.height * .8) / 40)
+
+        x3, y3 = start_point_x, start_point_y - y_interval
+        x4, y4 = start_point_x, start_point_y
+
+        for index, lf in enumerate(level_schema):
+            if index % 40 == 0:
+                row_counter += 1
+                x1, y1 = start_point_x, start_point_y - (row_counter - 1) * y_interval
+                x2, y2 = start_point_x, start_point_y - row_counter * y_interval
+                x3, y3 = start_point_x + x_interval, start_point_y - row_counter * y_interval
+                x4, y4 = start_point_x + x_interval, start_point_y - (row_counter - 1) * y_interval
+            else:
+                x1, y1 = x4, y4
+                x2, y2 = x3, y3
+                x3, y3 = x3 + x_interval, y3
+                x4, y4 = x4 + x_interval, y4
+
+            if lf == ['X']:
+                with self.canvas:
+                    Color(.7, .4, .2)
+                    field = Quad(points=[x1, y1, x2, y2, x3, y3, x4, y4])
+                    self.walls.append(field)
 
     def init_tank(self):
         with self.canvas.after:
@@ -105,8 +140,8 @@ class MainWidget(RelativeLayout):
         return False
 
     def check_collision_with_borders_y(self):
-        hero_bottom_edge = self.hero_coordinates[1][1]
-        hero_top_edge = self.hero_coordinates[0][1]
+        hero_bottom_edge = self.hero_coordinates[1][1] + 20
+        hero_top_edge = self.hero_coordinates[0][1] - 20
 
         if hero_top_edge > self.map_borders[1][1]:
             self.wall_collision = 'top'
@@ -142,7 +177,7 @@ class MainWidget(RelativeLayout):
 
     def update(self, dt):
         self.get_map_borders()
-        self.update_game_map()
+        self.update_game_field()
         self.update_tank()
         self.update_barrel_direction()
         if self.init_shot:
@@ -151,6 +186,10 @@ class MainWidget(RelativeLayout):
         self.update_bullets()
 
         if self.start_game_state:
+            if not self.map_initialized:
+                self.init_map()
+                self.map_initialized = True
+
             if not self.check_collision_with_borders_x():
                 self.current_offset_x += self.current_speed_x
             else:
@@ -168,10 +207,10 @@ class MainWidget(RelativeLayout):
                     self.current_offset_y += 1
 
     def get_map_borders(self):
-        left_border = int(.05*self.width)
-        right_border = int(.95*self.width)
-        bottom_border = int(.1*self.height)
-        top_border = int(.8*self.height)
+        left_border = int(.05 * self.width)
+        right_border = int(.95 * self.width)
+        bottom_border = int(.1 * self.height)
+        top_border = int(.8 * self.height)
 
         self.map_borders[0] = (left_border, right_border)
         self.map_borders[1] = (bottom_border, top_border)
@@ -230,7 +269,7 @@ class MainWidget(RelativeLayout):
         if keycode[1] == 'spacebar':
             self.init_shot = True
 
-        if keycode[1] == 'left':
+        elif keycode[1] == 'left':
             self.last_move = 'left'
             self.current_speed_x = -self.SPEED
 
@@ -272,11 +311,9 @@ class SuperTank(App):
 if __name__ == '__main__':
     SuperTank().run()
 
-
 # TODO: do not allow window size change when game in progress
-# TODO: bullets stay near the edge of the window? Does it affect performance or something?
-# Change shape of tank.
+# TODO: bullets stay near the edge of the window? Does it affect performance or something? Investigate.
 # TODO: Add Enemies? They want to shot hero.
-# TODO: Add Map? Randomly generated map. Levele dodawać predefiniowane.
-# TODO: Allow shot when moving ? new variable? which swich very fast?
-# TODO:
+# TODO: Add Map? Randomly generated map? Levele dodawać predefiniowane?
+# TODO: Allow shot when moving ? new variable? which switch very fast?
+# TODO: Problem z mapa.
