@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from kivy.config import Config
 
 Config.set('graphics', 'width', '1300')
@@ -13,6 +15,8 @@ from levels import level_1
 
 
 class MainWidget(RelativeLayout):
+    from user_actions import keyboard_closed, on_keyboard_up, on_keyboard_down
+
     menu_widget = ObjectProperty()
 
     menu_title = "S U P E R    T A N K"
@@ -23,7 +27,7 @@ class MainWidget(RelativeLayout):
     map = None
     tank = None
     barrel = None
-    hero_coordinates = [(0, 0), (0, 0), (0, 0), (0, 0)]
+    tank_coordinates = [(0, 0), (0, 0), (0, 0), (0, 0)]
     last_move = 'up'
     map_borders = [(0, 0), (0, 0)]  # [(left, right), (bottom, top)]
     wall_collision = None
@@ -41,7 +45,7 @@ class MainWidget(RelativeLayout):
 
     start_game_state = False
 
-    walls = []
+    tiles = []
 
     def __init__(self, **kwargs):
         super(MainWidget, self).__init__(**kwargs)
@@ -94,11 +98,27 @@ class MainWidget(RelativeLayout):
 
             if lf == ['X']:
                 with self.canvas:
-                    Color(.7, .4, .2)
-                    field = Quad(points=[x1, y1, x2, y2, x3, y3, x4, y4])
-                    self.walls.append(field)
+                    Color(0, 0, 0)
+                    tile = Quad(points=[x1, y1, x2, y2, x3, y3, x4, y4])
+                    self.tiles.append(tile)
 
-    def init_tank(self):
+    def scan_area_for_tiles(self) -> None:
+        # with self.last_move variable, check every wall,
+        # with tank position comparison to wall, check only walls which are on left or right,
+        # maybe need to write code to convert to LINE ?
+
+        # for each direction check for different condition
+
+        # scan whats in front of tank
+
+        for tile in self.tiles:
+            # if potential collision, send tile to check_for_collision_with_tile and block movement ?
+            pass
+
+    def validate_collision_with_tiles(self, tile):
+        pass
+
+    def init_tank(self) -> None:
         with self.canvas.after:
             Color(0, 0, 0)
             self.tank = Quad(points=[0, 0, 0, 0, 0, 0, 0, 0])
@@ -109,21 +129,21 @@ class MainWidget(RelativeLayout):
             center_x = self.width / 2 + self.current_offset_x
             base_y = (self.height / 2) - 10 + self.current_offset_y
 
-            self.hero_coordinates[0] = (center_x - 20, base_y)
-            self.hero_coordinates[1] = (center_x - 20, 40 + base_y)
-            self.hero_coordinates[2] = (center_x + 20, 40 + base_y)
-            self.hero_coordinates[3] = (center_x + 20, base_y)
+            self.tank_coordinates[0] = (center_x - 20, 40 + base_y)
+            self.tank_coordinates[1] = (center_x - 20, base_y)
+            self.tank_coordinates[2] = (center_x + 20, base_y)
+            self.tank_coordinates[3] = (center_x + 20, 40 + base_y)
 
-            x1, y1 = self.hero_coordinates[0]
-            x2, y2 = self.hero_coordinates[1]
-            x3, y3 = self.hero_coordinates[2]
-            x4, y4 = self.hero_coordinates[3]
+            x1, y1 = self.tank_coordinates[0]
+            x2, y2 = self.tank_coordinates[1]
+            x3, y3 = self.tank_coordinates[2]
+            x4, y4 = self.tank_coordinates[3]
 
             self.tank.points = [x1, y1, x2, y2, x3, y3, x4, y4]
 
     def check_collision_with_borders_x(self):
-        hero_left_edge = self.hero_coordinates[0][0]
-        hero_right_edge = self.hero_coordinates[2][0]
+        hero_left_edge = self.tank_coordinates[1][0]
+        hero_right_edge = self.tank_coordinates[3][0]
 
         if hero_left_edge <= self.map_borders[0][0]:
             self.wall_collision = 'left'
@@ -140,8 +160,8 @@ class MainWidget(RelativeLayout):
         return False
 
     def check_collision_with_borders_y(self):
-        hero_bottom_edge = self.hero_coordinates[1][1] + 20
-        hero_top_edge = self.hero_coordinates[0][1] - 20
+        hero_bottom_edge = self.tank_coordinates[0][1] + 20
+        hero_top_edge = self.tank_coordinates[1][1] - 20
 
         if hero_top_edge > self.map_borders[1][1]:
             self.wall_collision = 'top'
@@ -165,7 +185,7 @@ class MainWidget(RelativeLayout):
         print('settings')
 
     def update_barrel_direction(self):
-        x, y = self.hero_coordinates[0]
+        x, y = self.tank_coordinates[1]
         if self.last_move == 'up':
             self.barrel.points = [x + 20, y + 10, x + 20, y + 60]
         elif self.last_move == 'down':
@@ -206,6 +226,8 @@ class MainWidget(RelativeLayout):
                 if self.wall_collision == 'bottom':
                     self.current_offset_y += 1
 
+            self.scan_area_for_tiles()
+
     def get_map_borders(self):
         left_border = int(.05 * self.width)
         right_border = int(.95 * self.width)
@@ -242,8 +264,8 @@ class MainWidget(RelativeLayout):
 
             bullet.points = [x, y]
 
-    def get_bullet_start_point(self) -> (int, int):
-        x, y = self.hero_coordinates[0]
+    def get_bullet_start_point(self) -> Tuple[int, int]:
+        x, y = self.tank_coordinates[1]
         if self.last_move == 'up':
             return x + 20, y + 40
         elif self.last_move == 'down':
@@ -265,37 +287,6 @@ class MainWidget(RelativeLayout):
         last_move = self.last_move
         self.bullets_list.append((bullet, last_move))
 
-    def on_keyboard_down(self, keyboard, keycode, text, modifiers) -> bool:
-        if keycode[1] == 'spacebar':
-            self.init_shot = True
-
-        elif keycode[1] == 'left':
-            self.last_move = 'left'
-            self.current_speed_x = -self.SPEED
-
-        elif keycode[1] == 'right':
-            self.last_move = 'right'
-            self.current_speed_x = self.SPEED
-
-        elif keycode[1] == 'up':
-            self.last_move = 'up'
-            self.current_speed_y = self.SPEED
-
-        elif keycode[1] == 'down':
-            self.last_move = 'down'
-            self.current_speed_y = -self.SPEED
-        return True
-
-    def keyboard_closed(self):
-        self._keyboard.unbind(on_key_down=self.on_keyboard_down)
-        self._keyboard.unbind(on_key_up=self.on_keyboard_up)
-        self._keyboard = None
-
-    def on_keyboard_up(self, keyboard, keycode) -> bool:
-        self.current_speed_x = 0
-        self.current_speed_y = 0
-        return True
-
 
 class MenuWidget(RelativeLayout):
     def on_touch_down(self, touch):
@@ -316,4 +307,4 @@ if __name__ == '__main__':
 # TODO: Add Enemies? They want to shot hero.
 # TODO: Add Map? Randomly generated map? Levele dodawać predefiniowane?
 # TODO: Allow shot when moving ? new variable? which switch very fast?
-# TODO: Problem z mapa.
+# TODO: tank jump from one wall side to another.
